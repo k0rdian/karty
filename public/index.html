@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karty Przeciwko Ludzkości</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <div id="login-screen" class="screen active">
+        <h1>Wstęp tylko dla wtajemniczonych</h1>
+        <input type="password" id="password-input" placeholder="Hasło" />
+        <button id="login-btn">Wejdź</button>
+        <p id="login-error" class="error"></p>
+    </div>
+
+    <div id="lobby-screen" class="screen">
+        <h1>Wybierz Pokój</h1>
+        <input type="text" id="username-input" placeholder="Twoje Imię" />
+        <div class="room-list">
+            <button class="room-btn" data-room="1">Pokój 1</button>
+            <button class="room-btn" data-room="2">Pokój 2</button>
+            <button class="room-btn" data-room="3">Pokój 3</button>
+            <button class="room-btn" data-room="4">Pokój 4</button>
+            <button class="room-btn" data-room="5">Pokój 5</button>
+        </div>
+        <p id="lobby-error" class="error"></p>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="top-bar">
+            <div id="timer">60</div>
+            <div id="round-info">Runda 1</div>
+            <div id="scoreboard">
+                <ul id="score-list"></ul>
+            </div>
+        </div>
+
+        <button id="swap-hand-btn" class="hidden" title="Wymień wszystkie karty (raz na grę)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="16 3 21 3 21 8"/>
+                <line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/>
+                <line x1="15" y1="15" x2="21" y2="21"/>
+                <line x1="4" y1="4" x2="9" y2="9"/>
+            </svg>
+            <span>Losuj nowe karty</span>
+        </button>
+
+        <div id="question-area">
+            <div class="card black-card active">
+                <p id="question-text">Pytanie pojawi się tutaj...</p>
+            </div>
+        </div>
+
+        <div id="game-status">
+            <p id="status-text">Oczekiwanie na graczy...</p>
+        </div>
+
+        <div id="round-winner-banner" class="hidden"></div>
+        <div id="joker-backdrop" class="hidden"></div>
+
+        <h3 id="answers-title" class="hidden">Prezentacja odpowiedzi</h3>
+        <div id="submitted-answers-area" class="hidden">
+            <!-- Cards submitted by players appear here for Czar to pick -->
+        </div>
+
+        <div id="hand-area" class="swiper">
+            <div class="swiper-wrapper" id="hand-wrapper">
+                <!-- Player's hand (swiper slides) -->
+            </div>
+        </div>
+        <div id="joker-composer" class="hidden">
+            <p id="joker-info">ZDOBYŁEŚ JOKERA</p>
+            <input id="joker-input" type="text" maxlength="100" placeholder="Wpisz własną odpowiedź (max 100 znaków)" enterkeyhint="send" />
+            <p id="joker-counter">0/100</p>
+            <div id="joker-composer-actions">
+                <button id="joker-cancel-btn" class="btn-secondary">Anuluj</button>
+                <button id="joker-submit-btn">Wyślij JOKERA</button>
+            </div>
+        </div>
+        <button id="confirm-selection-btn" class="hidden">Wybierz</button>
+        <button id="start-next-round-btn" class="hidden">Start nowej rundy</button>
+
+        <div id="game-settings" class="hidden">
+            <h3 class="settings-title">⚙ Ustawienia gry</h3>
+
+            <div class="settings-group">
+                <label class="settings-label">Ilość rund</label>
+                <div class="stepper">
+                    <button type="button" id="round-minus-btn" class="stepper-btn">−</button>
+                    <span class="stepper-value" id="round-display">10</span>
+                    <button type="button" id="round-plus-btn" class="stepper-btn">+</button>
+                </div>
+                <input type="hidden" id="round-limit-input" value="10" />
+                <p class="setting-desc">Liczba rund do rozegrania (10–100). Po osiągnięciu limitu gra się kończy.</p>
+            </div>
+
+            <div class="settings-group">
+                <label class="settings-label">Boty</label>
+                <div class="stepper">
+                    <button type="button" id="bot-minus-btn" class="stepper-btn">−</button>
+                    <span class="stepper-value" id="bot-count-display">0</span>
+                    <button type="button" id="bot-plus-btn" class="stepper-btn">+</button>
+                </div>
+                <p class="setting-desc">Boty służą do gry demo — ich odpowiedzi są losowe.</p>
+            </div>
+
+            <div class="settings-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allow-swap-check" checked />
+                    <span class="checkmark"></span>
+                    <span>Przetasowanie kart</span>
+                </label>
+                <p class="setting-desc">Każdy gracz może jednorazowo wymienić wszystkie swoje karty na nowe wylosowane z talii.</p>
+            </div>
+
+            <div class="settings-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allow-joker-check" checked />
+                    <span class="checkmark"></span>
+                    <span>Karta Joker</span>
+                </label>
+                <p class="setting-desc">Gracze mają 10% szansy na wylosowanie specjalnej karty JOKER, na której mogą wpisać własną odpowiedź.</p>
+            </div>
+
+            <div class="settings-actions">
+                <button id="start-game-btn">Rozpocznij Grę</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="winner-screen" class="screen">
+        <h1>Koniec gry</h1>
+        <p id="game-end-reason"></p>
+        <h2 id="winner-name"></h2>
+        <p>Czy rozpocząć nową grę?</p>
+        <div id="restart-actions">
+            <button id="restart-yes-btn" class="hidden">TAK</button>
+            <button id="restart-no-btn" class="hidden">NIE</button>
+        </div>
+        <p id="restart-status"></p>
+    </div>
+
+    <div id="round-transition" class="round-transition hidden">
+        <div class="round-transition-content">
+            <p id="transition-title"></p>
+            <p id="transition-subtitle"></p>
+        </div>
+    </div>
+
+</body>
+</html>
