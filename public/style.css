@@ -105,8 +105,7 @@ h1, h2, h3 {
 
 /* ── Login & Lobby ───────────────────────────── */
 
-#login-screen,
-#lobby-screen {
+#login-screen {
     background: var(--glass);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -116,6 +115,18 @@ h1, h2, h3 {
     box-shadow: var(--shadow-lg);
     text-align: center;
     max-width: 440px;
+}
+
+#lobby-screen {
+    background: var(--glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    max-width: 560px;
 }
 
 /* ── Winner Screen ───────────────────────────── */
@@ -220,29 +231,122 @@ button:active {
     transform: translateY(0);
 }
 
-/* ── Room List ───────────────────────────────── */
+/* ── Room Grid ───────────────────────────────── */
 
-.room-list {
+.room-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     width: 100%;
     margin-top: 20px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
-.room-btn {
-    padding: 14px;
+.room-grid::-webkit-scrollbar {
+    width: 5px;
+}
+
+.room-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.room-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+}
+
+.room-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 8px;
     background: var(--glass);
     border: 1px solid var(--glass-border);
-    color: var(--text-primary);
     border-radius: var(--radius-md);
-    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    min-height: 72px;
 }
 
-.room-btn:hover {
+.room-card:hover {
     background: var(--accent-dim);
     border-color: var(--accent);
     box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+.room-card .room-number {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.room-card .room-status {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── In-game indicator (SVG dot + pulse) ─────── */
+
+.room-card.in-game {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.room-card.in-game:hover {
+    border-color: rgba(16, 185, 129, 0.6);
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+.room-card.in-game .room-status {
+    color: var(--success);
+}
+
+.room-indicator {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.room-card.in-game .room-indicator {
+    opacity: 1;
+}
+
+.room-indicator .indicator-dot {
+    fill: var(--success);
+}
+
+.room-indicator .indicator-pulse {
+    fill: var(--success);
+    opacity: 0.4;
+    transform-origin: center;
+    animation: indicatorPulse 2s ease-in-out infinite;
+}
+
+@keyframes indicatorPulse {
+    0%, 100% {
+        r: 3.5;
+        opacity: 0.4;
+    }
+    50% {
+        r: 5;
+        opacity: 0;
+    }
 }
 
 /* ── Game Screen ─────────────────────────────── */

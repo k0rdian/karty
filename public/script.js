@@ -17,8 +17,84 @@ const loginBtn = document.getElementById('login-btn');
 const loginError = document.getElementById('login-error');
 
 const usernameInput = document.getElementById('username-input');
-const roomBtns = document.querySelectorAll('.room-btn');
+const roomGrid = document.getElementById('room-grid');
 const lobbyError = document.getElementById('lobby-error');
+
+// Generate 20 room cards dynamically
+const TOTAL_ROOMS = 20;
+let roomStatusInterval = null;
+
+function createRoomCards() {
+    roomGrid.innerHTML = '';
+    for (let i = 1; i <= TOTAL_ROOMS; i++) {
+        const card = document.createElement('div');
+        card.className = 'room-card';
+        card.dataset.room = i;
+        card.id = `room-card-${i}`;
+        card.innerHTML = `
+            <svg class="room-indicator" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+                <circle class="indicator-pulse" cx="5" cy="5" r="3.5"/>
+                <circle class="indicator-dot" cx="5" cy="5" r="2.5"/>
+            </svg>
+            <span class="room-number">${i}</span>
+            <span class="room-status" id="room-status-${i}">Wolny</span>
+        `;
+        card.addEventListener('click', () => {
+            const name = usernameInput.value.trim();
+            if (!name) {
+                lobbyError.textContent = 'Wpisz imię!';
+                return;
+            }
+            lobbyError.textContent = '';
+            localStorage.setItem(STORAGE_KEYS.name, name);
+            localStorage.setItem(STORAGE_KEYS.room, String(i));
+            currentRoomId = String(i);
+            socket.emit('joinRoom', { roomNumber: i, playerName: name, sessionId, isRestore: false });
+        });
+        roomGrid.appendChild(card);
+    }
+}
+
+function fetchRoomStatuses() {
+    fetch('/api/rooms')
+        .then(res => res.json())
+        .then(statuses => {
+            statuses.forEach(room => {
+                const card = document.getElementById(`room-card-${room.id}`);
+                const statusEl = document.getElementById(`room-status-${room.id}`);
+                if (!card || !statusEl) return;
+
+                const isInGame = room.gameState && room.gameState !== 'LOBBY';
+                const isLobby = room.gameState === 'LOBBY';
+
+                card.classList.toggle('in-game', isInGame);
+
+                if (isInGame) {
+                    statusEl.textContent = `W grze (${room.playerCount})`;
+                } else if (isLobby) {
+                    statusEl.textContent = `Lobby (${room.playerCount})`;
+                } else {
+                    statusEl.textContent = 'Wolny';
+                }
+            });
+        })
+        .catch(() => { /* silent fail */ });
+}
+
+function startRoomStatusPolling() {
+    fetchRoomStatuses();
+    if (roomStatusInterval) clearInterval(roomStatusInterval);
+    roomStatusInterval = setInterval(fetchRoomStatuses, 5000);
+}
+
+function stopRoomStatusPolling() {
+    if (roomStatusInterval) {
+        clearInterval(roomStatusInterval);
+        roomStatusInterval = null;
+    }
+}
+
+createRoomCards();
 
 const timerEl = document.getElementById('timer');
 const roundInfoEl = document.getElementById('round-info');
@@ -122,6 +198,7 @@ loginBtn.addEventListener('click', () => {
                     loginScreen.classList.remove('active');
                     gsap.set(loginScreen, { clearProps: 'all' });
                     lobbyScreen.classList.add('active');
+                    startRoomStatusPolling();
                     gsap.from(lobbyScreen, {
                         opacity: 0,
                         y: 20,
@@ -141,24 +218,7 @@ loginBtn.addEventListener('click', () => {
     });
 });
 
-roomBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-        const room = btn.dataset.room;
-        const name = usernameInput.value.trim();
-
-        if (!name) {
-            lobbyError.textContent = 'Wpisz imię!';
-            return;
-        }
-
-        lobbyError.textContent = '';
-        localStorage.setItem(STORAGE_KEYS.name, name);
-        localStorage.setItem(STORAGE_KEYS.room, room);
-
-        currentRoomId = room;
-        socket.emit('joinRoom', { roomNumber: room, playerName: name, sessionId, isRestore: false });
-    });
-});
+// Room card click handlers are set up in createRoomCards()
 
 startGameBtn.addEventListener('click', () => {
     const roundLimit = parseInt(roundLimitInput.value, 10);
@@ -438,6 +498,7 @@ function hydrateFromStorage() {
     if (localStorage.getItem(STORAGE_KEYS.auth) === '1') {
         loginScreen.classList.remove('active');
         lobbyScreen.classList.add('active');
+        startRoomStatusPolling();
     }
 }
 
@@ -515,6 +576,7 @@ function resetToFreshEntry() {
     gameScreen.classList.remove('active');
     lobbyScreen.classList.remove('active');
     loginScreen.classList.add('active');
+    stopRoomStatusPolling();
 }
 
 function syncRoundLimitState(roundLimit) {
@@ -626,6 +688,7 @@ function showGameScreen() {
     lobbyScreen.classList.remove('active');
     winnerScreen.classList.remove('active');
     gameScreen.classList.add('active');
+    stopRoomStatusPolling();
 
     if (!wasActive) {
         gsap.from(gameScreen, {

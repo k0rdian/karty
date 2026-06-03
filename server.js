@@ -249,6 +249,28 @@ app.get('/check-auth', (req, res) => {
     res.sendStatus(200);
 });
 
+app.get('/api/rooms', (req, res) => {
+    const statuses = [];
+    for (let i = 1; i <= 20; i++) {
+        const roomId = String(i);
+        const room = rooms[roomId];
+        if (room) {
+            statuses.push({
+                id: roomId,
+                playerCount: room.players.length,
+                gameState: room.gameState
+            });
+        } else {
+            statuses.push({
+                id: roomId,
+                playerCount: 0,
+                gameState: null
+            });
+        }
+    }
+    res.json(statuses);
+});
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -262,7 +284,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinRoom', ({ roomNumber, playerName, sessionId, isRestore }) => {
         const parsedRoomNumber = Number(roomNumber);
-        if (!Number.isInteger(parsedRoomNumber) || parsedRoomNumber < 1 || parsedRoomNumber > 5) return;
+        if (!Number.isInteger(parsedRoomNumber) || parsedRoomNumber < 1 || parsedRoomNumber > 20) return;
         const roomId = parsedRoomNumber.toString();
         const safeName = (playerName || '').trim();
         const safeSessionId = (sessionId || '').trim();
